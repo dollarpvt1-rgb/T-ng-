@@ -1,11 +1,13 @@
 import React from 'react';
+import { SettingsIcon } from './icons/Icons';
 
 interface HeaderProps {
   onLoginClick: () => void;
   onSignupClick: () => void;
+  onSettingsClick: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onLoginClick, onSignupClick }) => {
+const Header: React.FC<HeaderProps> = ({ onLoginClick, onSignupClick, onSettingsClick }) => {
   return (
     <header className="sticky top-0 z-50 bg-dark-bg/80 backdrop-blur-sm border-b border-dark-border">
       <div className="container mx-auto px-4">
@@ -23,6 +25,10 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick, onSignupClick }) => {
             <a href="#" className="text-medium-text hover:text-light-text transition-colors">Liên Hệ</a>
           </nav>
           <div className="flex items-center gap-4">
+             <button onClick={onSettingsClick} className="text-medium-text hover:text-light-text p-2 rounded-full transition-colors" aria-label="Cài đặt API Key">
+                <SettingsIcon className="w-6 h-6" />
+            </button>
+            <div className="w-px h-6 bg-dark-border"></div>
             <button onClick={onLoginClick} className="text-medium-text hover:text-light-text font-semibold transition-colors">
               Đăng Nhập
             </button>

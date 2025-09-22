@@ -2,9 +2,6 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { GoogleGenAI, Chat, GenerateContentResponse } from '@google/genai';
 import { CopyIcon, DownloadIcon, SendIcon, SparklesIcon, VideoIcon } from '../icons/Icons';
 
-// QUAN TRỌNG: Hãy đảm bảo biến môi trường API_KEY đã được thiết lập.
-const API_KEY = process.env.API_KEY;
-
 interface ScriptProUIProps {
   onNavigateToVideo: (toolId: string, data: any) => void;
 }
@@ -147,10 +144,6 @@ const ScriptProUI: React.FC<ScriptProUIProps> = ({ onNavigateToVideo }) => {
       setError('Vui lòng nhập ý tưởng chính cho kịch bản.');
       return;
     }
-    if (!API_KEY) {
-        setError('Lỗi cấu hình: API Key chưa được cung cấp.');
-        return;
-    }
 
     setIsLoading(true);
     resetState();
@@ -178,7 +171,7 @@ const ScriptProUI: React.FC<ScriptProUIProps> = ({ onNavigateToVideo }) => {
         Ý tưởng chính: "${idea}".
         Hãy đảm bảo nội dung có cấu trúc rõ ràng, văn phong tự nhiên và phù hợp.`;
 
-        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: userPrompt,
@@ -215,10 +208,6 @@ const ScriptProUI: React.FC<ScriptProUIProps> = ({ onNavigateToVideo }) => {
     e.preventDefault();
     if (!scriptToAnalyze.trim()) {
       setError('Vui lòng dán kịch bản của bạn vào để phân tích.');
-      return;
-    }
-    if (!API_KEY) {
-      setError('Lỗi cấu hình: API Key chưa được cung cấp.');
       return;
     }
 
@@ -263,7 +252,7 @@ const ScriptProUI: React.FC<ScriptProUIProps> = ({ onNavigateToVideo }) => {
       \`\`\`
       `;
 
-      const ai = new GoogleGenAI({ apiKey: API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: userPrompt,

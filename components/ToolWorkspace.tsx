@@ -19,7 +19,7 @@ const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ tool, initialData, onGoBa
       case 'visioncraft':
         return <VisionCraftUI />;
       case 'echovid':
-        return <EchoVidUI />;
+        return <EchoVidUI initialData={initialData} />;
       case 'script-pro':
         return <ScriptProUI onNavigateToVideo={onNavigate} />;
       case 'content-master':

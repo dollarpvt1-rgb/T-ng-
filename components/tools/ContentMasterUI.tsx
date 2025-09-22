@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { GoogleGenAI, Chat, GenerateContentResponse } from '@google/genai';
 import { CopyIcon, DownloadIcon, SparklesIcon, SendIcon } from '../icons/Icons';
 
-// QUAN TRỌNG: Hãy đảm bảo biến môi trường API_KEY đã được thiết lập.
-const API_KEY = process.env.API_KEY;
-
 const GOALS = [
     { id: 'improve', name: 'Cải thiện & Sửa lỗi'},
     { id: 'shorten', name: 'Rút gọn'},
@@ -65,11 +62,7 @@ const ContentMasterUI: React.FC = () => {
             setError('Vui lòng nhập văn bản gốc để tối ưu hóa.');
             return;
         }
-        if (!API_KEY) {
-            setError('Lỗi cấu hình: API Key chưa được cung cấp.');
-            return;
-        }
-
+        
         setIsLoading(true);
         setError(null);
         setRewrittenText('');
@@ -78,7 +71,7 @@ const ContentMasterUI: React.FC = () => {
 
         try {
             const userPrompt = constructUserPrompt(originalText, goal, tone, seoKeywords);
-            const ai = new GoogleGenAI({ apiKey: API_KEY });
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: userPrompt,
@@ -116,11 +109,7 @@ const ContentMasterUI: React.FC = () => {
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!chatMessage.trim() || isChatLoading) return;
-        if (!API_KEY) {
-            setError('Lỗi cấu hình: API Key chưa được cung cấp.');
-            return;
-        }
-
+        
         const userMessage = chatMessage.trim();
         setChatHistory(prev => [...prev, { role: 'user', text: userMessage }]);
         setChatMessage('');
@@ -131,7 +120,7 @@ const ContentMasterUI: React.FC = () => {
             let currentChat = chatSession;
             // Nếu chưa có session, tạo mới
             if (!currentChat) {
-                 const ai = new GoogleGenAI({ apiKey: API_KEY });
+                 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
                  currentChat = ai.chats.create({
                     model: 'gemini-2.5-flash',
                     config: { systemInstruction: getSystemInstruction() }

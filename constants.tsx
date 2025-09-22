@@ -46,7 +46,7 @@ export const AI_TOOLS: AITool[] = [
     tags: ['Video', 'Mạng xã hội', 'Quảng cáo'],
     icon: <VideoIcon className="w-8 h-8 text-rose-400" />,
     status: 'active',
-    fullscreen: true,
+    fullscreen: false,
   },
   {
     id: 'script-pro',

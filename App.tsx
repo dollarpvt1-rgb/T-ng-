@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import Footer from './components/Footer';
@@ -9,6 +9,8 @@ import About from './components/About';
 import AuthModal from './components/AuthModal';
 import ToolDetailModal from './components/ToolDetailModal';
 import ToolWorkspace from './components/ToolWorkspace';
+import SettingsModal from './components/SettingsModal';
+import { APIKeyProvider } from './contexts/APIKeyContext';
 import { CATEGORIES, AI_TOOLS } from './constants';
 import { AITool } from './types';
 
@@ -16,6 +18,7 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
   const [isSignupModalOpen, setSignupModalOpen] = useState(false);
+  const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
   const [viewingToolDetails, setViewingToolDetails] = useState<AITool | null>(null);
   const [activeTool, setActiveTool] = useState<AITool | null>(null);
   const [initialToolData, setInitialToolData] = useState<any>(null);
@@ -72,6 +75,10 @@ function App() {
     }
   };
 
+  const requestApiKey = useCallback(() => {
+    setSettingsModalOpen(true);
+  }, []);
+
 
   const renderMarketplace = () => (
     <>
@@ -115,46 +122,53 @@ function App() {
   );
 
   return (
-    <div className="bg-dark-bg text-light-text min-h-screen font-sans">
-      {!activeTool?.fullscreen && (
-        <Header 
-          onLoginClick={() => setLoginModalOpen(true)}
-          onSignupClick={() => setSignupModalOpen(true)}
-        />
-      )}
-      <main className={activeTool?.fullscreen ? 'flex flex-col h-screen' : ''}>
-        {activeTool ? (
-          <ToolWorkspace 
-            tool={activeTool} 
-            initialData={initialToolData}
-            onGoBack={handleBackToMarketplace} 
-            onNavigate={handleNavigateWithData}
+    <APIKeyProvider onRequestApiKey={requestApiKey}>
+      <div className="bg-dark-bg text-light-text min-h-screen font-sans">
+        {!activeTool?.fullscreen && (
+          <Header 
+            onLoginClick={() => setLoginModalOpen(true)}
+            onSignupClick={() => setSignupModalOpen(true)}
+            onSettingsClick={() => setSettingsModalOpen(true)}
           />
-        ) : (
-          renderMarketplace()
         )}
-      </main>
-      {!activeTool?.fullscreen && (
-        <Footer />
-      )}
-      <AuthModal 
-        mode="login" 
-        isOpen={isLoginModalOpen} 
-        onClose={() => setLoginModalOpen(false)}
-        onGoogleAuthClick={handleGoogleSignIn}
-      />
-      <AuthModal 
-        mode="signup" 
-        isOpen={isSignupModalOpen} 
-        onClose={() => setSignupModalOpen(false)} 
-        onGoogleAuthClick={handleGoogleSignIn}
-      />
-      <ToolDetailModal 
-        tool={viewingToolDetails}
-        onClose={() => setViewingToolDetails(null)}
-        onAccessTool={handleAccessTool}
-      />
-    </div>
+        <main className={activeTool?.fullscreen ? 'flex flex-col h-screen' : ''}>
+          {activeTool ? (
+            <ToolWorkspace 
+              tool={activeTool} 
+              initialData={initialToolData}
+              onGoBack={handleBackToMarketplace} 
+              onNavigate={handleNavigateWithData}
+            />
+          ) : (
+            renderMarketplace()
+          )}
+        </main>
+        {!activeTool?.fullscreen && (
+          <Footer />
+        )}
+        <AuthModal 
+          mode="login" 
+          isOpen={isLoginModalOpen} 
+          onClose={() => setLoginModalOpen(false)}
+          onGoogleAuthClick={handleGoogleSignIn}
+        />
+        <AuthModal 
+          mode="signup" 
+          isOpen={isSignupModalOpen} 
+          onClose={() => setSignupModalOpen(false)} 
+          onGoogleAuthClick={handleGoogleSignIn}
+        />
+        <ToolDetailModal 
+          tool={viewingToolDetails}
+          onClose={() => setViewingToolDetails(null)}
+          onAccessTool={handleAccessTool}
+        />
+        <SettingsModal 
+            isOpen={isSettingsModalOpen}
+            onClose={() => setSettingsModalOpen(false)}
+        />
+      </div>
+    </APIKeyProvider>
   );
 }
 

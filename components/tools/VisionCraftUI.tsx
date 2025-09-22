@@ -2,11 +2,6 @@ import React, { useState } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { DownloadIcon, SettingsIcon } from '../icons/Icons';
 
-// QUAN TRỌNG: Hãy đảm bảo biến môi trường API_KEY đã được thiết lập.
-// Trong môi trường thực tế, bạn sẽ không để lộ key này ở phía client.
-// Đây chỉ là mục đích demo.
-const API_KEY = process.env.API_KEY;
-
 const ASPECT_RATIOS = [
   { value: '1:1', label: '1:1 (Vuông)' },
   { value: '16:9', label: '16:9 (Màn ảnh rộng)' },
@@ -53,12 +48,7 @@ const VisionCraftUI: React.FC = () => {
       setError('Vui lòng nhập mô tả cho hình ảnh.');
       return;
     }
-    if (!API_KEY) {
-      setError('Lỗi cấu hình: API Key chưa được cung cấp.');
-      console.error("API_KEY is not set in environment variables.");
-      return;
-    }
-
+    
     setIsLoading(true);
     setError(null);
     setGeneratedImage(null);
@@ -68,7 +58,7 @@ const VisionCraftUI: React.FC = () => {
       const qualitySuffix = QUALITIES.find(q => q.value === quality)?.suffix || '';
       const fullPrompt = `${stylePrefix} ${prompt}${qualitySuffix}`;
 
-      const ai = new GoogleGenAI({ apiKey: API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateImages({
         model: 'imagen-4.0-generate-001',
         prompt: fullPrompt,
