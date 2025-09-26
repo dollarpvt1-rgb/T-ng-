@@ -1,163 +1,113 @@
 import React, { useState } from 'react';
-import { GoogleGenAI, Chat, GenerateContentResponse } from '@google/genai';
-import { CopyIcon, DownloadIcon, SparklesIcon, SendIcon } from '../icons/Icons';
+import { GoogleGenAI } from '@google/genai';
+import { SparklesIcon, CopyIcon, ClipboardCheckIcon, PencilIcon, SendIcon, DownloadIcon } from '../icons/Icons';
 
-const GOALS = [
-    { id: 'improve', name: 'Cải thiện & Sửa lỗi'},
-    { id: 'shorten', name: 'Rút gọn'},
-    { id: 'expand', name: 'Mở rộng'},
-    { id: 'change_tone', name: 'Thay đổi văn phong'},
-    { id: 'seo', name: 'Tối ưu SEO'},
-];
-
-const TONES = [
-    { id: 'professional', name: 'Chuyên nghiệp' },
-    { id: 'friendly', name: 'Thân thiện' },
-    { id: 'persuasive', name: 'Thuyết phục' },
-    { id: 'humorous', name: 'Hài hước' },
-    { id: 'empathetic', name: 'Đồng cảm' },
+// New constants for styles
+const WRITING_STYLES = [
+    'Chuyên nghiệp & Trang trọng',
+    'Thân mật & Gần gũi',
+    'Thuyết phục & Bán hàng',
+    'Hấp dẫn & Kể chuyện',
+    'Đơn giản & Dễ hiểu',
+    'Tối ưu SEO',
+    'Học thuật & Nghiên cứu',
+    'Hài hước & Dí dỏm',
 ];
 
 const ContentMasterUI: React.FC = () => {
+    // State variables
     const [originalText, setOriginalText] = useState('');
     const [rewrittenText, setRewrittenText] = useState('');
-    const [goal, setGoal] = useState(GOALS[0].id);
-    const [tone, setTone] = useState(TONES[0].id);
-    const [seoKeywords, setSeoKeywords] = useState('');
-
+    const [style, setStyle] = useState(WRITING_STYLES[0]);
+    const [customRequest, setCustomRequest] = useState('');
+    const [keywords, setKeywords] = useState('');
+    const [refinementPrompt, setRefinementPrompt] = useState('');
+    
     const [isLoading, setIsLoading] = useState(false);
+    const [isRefining, setIsRefining] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isCopied, setIsCopied] = useState(false);
 
-    // State cho tính năng chat
-    const [chatSession, setChatSession] = useState<Chat | null>(null);
-    const [chatMessage, setChatMessage] = useState('');
-    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([]);
-    const [isChatLoading, setIsChatLoading] = useState(false);
-
-    const wordCount = (text: string) => {
-        return text.trim().split(/\s+/).filter(Boolean).length;
-    };
-
-    const getSystemInstruction = () => "Bạn là một chuyên gia biên tập và copywriter bậc thầy. Nhiệm vụ của bạn là tạo mới hoặc viết lại văn bản được cung cấp theo hướng dẫn của người dùng, cải thiện chất lượng của nó trong khi vẫn giữ lại thông điệp cốt lõi. Luôn luôn chỉ trả về văn bản đã được viết lại hoặc tạo mới một cách đầy đủ. Không thêm bất kỳ lời nói đầu, lời giải thích hay câu thoại nào như 'Đây là phiên bản đã chỉnh sửa của bạn:'.";
-
-    const constructUserPrompt = (text: string, currentGoal: string, currentTone: string, currentSeoKeywords: string) => {
-        const selectedGoal = GOALS.find(g => g.id === currentGoal)?.name || 'Cải thiện & Sửa lỗi';
-        const selectedTone = TONES.find(t => t.id === currentTone)?.name || 'Chuyên nghiệp';
-
-        let instruction = `Mục tiêu: ${selectedGoal}.`;
-        if (currentGoal === 'change_tone') {
-            instruction += ` Hãy viết lại theo văn phong: ${selectedTone}.`;
-        }
-        if (currentGoal === 'seo') {
-            instruction += ` Tối ưu hóa cho các từ khóa sau: "${currentSeoKeywords || 'không có'}".`;
-        }
-        
-        return `Văn bản gốc:\n"""\n${text}\n"""\n\nHướng dẫn:\n${instruction}`;
-    };
-
-    const handleOptimize = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleRewrite = async () => {
         if (!originalText.trim()) {
-            setError('Vui lòng nhập văn bản gốc để tối ưu hóa.');
+            setError('Vui lòng nhập nội dung cần viết lại.');
             return;
         }
-        
+        if (!process.env.API_KEY) {
+            setError("API Key không được cấu hình. Vui lòng thiết lập biến môi trường API_KEY.");
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
         setRewrittenText('');
-        setChatSession(null);
-        setChatHistory([]);
+
+        let prompt = `Bạn là một chuyên gia biên tập nội dung. Hãy viết lại đoạn văn bản sau đây theo phong cách "${style}".`;
+
+        if (customRequest.trim()) {
+            prompt += ` Ngoài ra, hãy tuân thủ yêu cầu đặc biệt sau: "${customRequest}".`;
+        }
+        
+        if (style.includes('SEO') && keywords.trim()) {
+            prompt += ` Hãy đảm bảo tối ưu hóa cho các từ khóa sau: "${keywords}".`;
+        }
+        prompt += ` Giữ nguyên ý nghĩa cốt lõi của văn bản gốc.\n\n**Văn bản gốc:**\n---\n${originalText}\n---\n\n**Văn bản viết lại:**`;
 
         try {
-            const userPrompt = constructUserPrompt(originalText, goal, tone, seoKeywords);
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
-                contents: userPrompt,
-                config: {
-                    systemInstruction: getSystemInstruction(),
-                    temperature: 0.7,
-                },
+                contents: prompt,
             });
-
-            const initialText = response.text;
-            setRewrittenText(initialText);
-
-            // Khởi tạo phiên chat với ngữ cảnh ban đầu
-            const chat = ai.chats.create({
-                model: 'gemini-2.5-flash',
-                history: [
-                    { role: 'user', parts: [{ text: userPrompt }] },
-                    { role: 'model', parts: [{ text: initialText }] }
-                ],
-                config: {
-                    systemInstruction: getSystemInstruction(),
-                }
-            });
-            setChatSession(chat);
-
+            setRewrittenText(response.text);
         } catch (err) {
-            console.error('Lỗi khi gọi Gemini API:', err);
             const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi không xác định.';
-            setError(`Không thể tối ưu hóa nội dung. ${errorMessage}`);
+            setError(`Không thể viết lại nội dung. ${errorMessage}`);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleSendMessage = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!chatMessage.trim() || isChatLoading) return;
-        
-        const userMessage = chatMessage.trim();
-        setChatHistory(prev => [...prev, { role: 'user', text: userMessage }]);
-        setChatMessage('');
-        setIsChatLoading(true);
+    const handleRefine = async () => {
+        if (!rewrittenText || !refinementPrompt.trim()) return;
+
+        setIsRefining(true);
         setError(null);
 
+        const prompt = `Bạn là một biên tập viên AI. Văn bản hiện tại là:\n\n---\n${rewrittenText}\n---\n\nHãy chỉnh sửa văn bản trên dựa theo yêu cầu sau: "${refinementPrompt}".\n\nChỉ trả về TOÀN BỘ văn bản đã được cập nhật.`;
+
         try {
-            let currentChat = chatSession;
-            // Nếu chưa có session, tạo mới
-            if (!currentChat) {
-                 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-                 currentChat = ai.chats.create({
-                    model: 'gemini-2.5-flash',
-                    config: { systemInstruction: getSystemInstruction() }
-                });
-                setChatSession(currentChat);
-            }
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+            });
 
-            const response: GenerateContentResponse = await currentChat.sendMessage({ message: userMessage });
-            const updatedText = response.text;
-            setRewrittenText(updatedText);
-
+            setRewrittenText(response.text);
+            setRefinementPrompt('');
         } catch (err) {
-            console.error('Lỗi khi gửi tin nhắn chat:', err);
             const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi không xác định.';
-            setError(`Không thể thực hiện yêu cầu. ${errorMessage}`);
-            setChatHistory(prev => prev.slice(0, -1));
-            setChatMessage(userMessage);
+            setError(`Không thể tinh chỉnh nội dung. ${errorMessage}`);
         } finally {
-            setIsChatLoading(false);
+            setIsRefining(false);
         }
     };
 
     const handleCopy = () => {
-        if (!rewrittenText || isCopied) return;
-        navigator.clipboard.writeText(rewrittenText).then(() => {
-            setIsCopied(true);
-            setTimeout(() => setIsCopied(false), 2500);
-        });
+        if (!rewrittenText) return;
+        navigator.clipboard.writeText(rewrittenText);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
     };
 
-    const handleDownload = () => {
+    const handleSaveAsTxt = () => {
         if (!rewrittenText) return;
         const blob = new Blob([rewrittenText], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `content-master-ai-optimized.txt`;
+        const filename = originalText.substring(0, 20).replace(/\s+/g, '_').toLowerCase() || 'content_master_ai';
+        link.download = `${filename}.txt`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -165,167 +115,132 @@ const ContentMasterUI: React.FC = () => {
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Cột Input */}
-            <div className="bg-dark-card border border-dark-border rounded-xl p-6 flex flex-col gap-6">
-                <form onSubmit={handleOptimize} className="flex flex-col gap-6 h-full">
-                    <div>
-                        <h2 className="text-xl font-bold text-light-text mb-4">Văn Bản Gốc</h2>
-                        <div className="relative">
-                            <textarea
-                                value={originalText}
-                                onChange={(e) => setOriginalText(e.target.value)}
-                                placeholder="Dán văn bản của bạn ở đây để có bản nháp đầu tiên..."
-                                className="w-full h-64 bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-light-text placeholder-medium-text focus:outline-none focus:ring-2 focus:ring-brand-blue transition-shadow resize-none"
-                                disabled={isLoading || isChatLoading}
-                            />
-                            <span className="absolute bottom-3 right-3 text-xs text-medium-text bg-dark-bg px-2 py-1 rounded">
-                                {wordCount(originalText)} từ
-                            </span>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h3 className="text-lg font-semibold text-light-text mb-4">Tùy Chọn Tối Ưu Hóa (cho bản nháp đầu)</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label htmlFor="goal" className="block text-sm font-medium text-medium-text mb-2">Mục tiêu</label>
-                                <select id="goal" value={goal} onChange={e => setGoal(e.target.value)} disabled={isLoading || isChatLoading} className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2.5 text-light-text focus:outline-none focus:ring-2 focus:ring-brand-blue">
-                                    {GOALS.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                                </select>
-                            </div>
-                            
-                            {goal === 'change_tone' && (
-                                <div className="animate-fade-in">
-                                    <label htmlFor="tone" className="block text-sm font-medium text-medium-text mb-2">Văn phong</label>
-                                    <select id="tone" value={tone} onChange={e => setTone(e.target.value)} disabled={isLoading || isChatLoading} className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2.5 text-light-text focus:outline-none focus:ring-2 focus:ring-brand-blue">
-                                        {TONES.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                    </select>
-                                </div>
-                            )}
-
-                            {goal === 'seo' && (
-                                <div className="animate-fade-in">
-                                    <label htmlFor="seoKeywords" className="block text-sm font-medium text-medium-text mb-2">Từ khóa SEO (phân cách bằng dấu phẩy)</label>
-                                    <input
-                                        type="text"
-                                        id="seoKeywords"
-                                        value={seoKeywords}
-                                        onChange={e => setSeoKeywords(e.target.value)}
-                                        placeholder="Ví dụ: AI, marketing, nội dung"
-                                        className="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-2.5 text-light-text placeholder-medium-text focus:outline-none focus:ring-2 focus:ring-brand-blue"
-                                        disabled={isLoading || isChatLoading}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={isLoading || isChatLoading || !originalText.trim()}
-                        className="w-full mt-auto bg-brand-blue hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 disabled:bg-dark-border disabled:cursor-not-allowed disabled:scale-100 flex items-center justify-center gap-2"
-                    >
-                        {isLoading ? (
-                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        ) : (
-                            <SparklesIcon className="w-5 h-5" />
-                        )}
-                        <span>{isLoading ? 'Đang tạo bản nháp...' : 'Tạo Bản Nháp Đầu Tiên'}</span>
-                    </button>
-                </form>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
+            {/* Input Panel */}
+            <div className="bg-dark-card border border-dark-border rounded-xl p-6 flex flex-col">
+                <h2 className="text-xl font-bold mb-4">Nội dung gốc</h2>
+                <textarea
+                    value={originalText}
+                    onChange={(e) => setOriginalText(e.target.value)}
+                    rows={8}
+                    placeholder="Dán hoặc nhập văn bản của bạn ở đây..."
+                    className="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-light-text placeholder-medium-text focus:outline-none focus:ring-2 focus:ring-brand-blue flex-grow"
+                    disabled={isLoading}
+                />
+                <div className="mt-6 space-y-4">
+                     <div>
+                        <label htmlFor="style-select" className="block text-sm font-semibold text-medium-text mb-2">Chọn phong cách viết</label>
+                        <select
+                            id="style-select"
+                            value={style}
+                            onChange={(e) => setStyle(e.target.value)}
+                            disabled={isLoading}
+                            className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2.5 text-light-text focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                        >
+                            {WRITING_STYLES.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                     </div>
+                     <div>
+                        <label htmlFor="custom-request" className="block text-sm font-semibold text-medium-text mb-2">Thêm yêu cầu tùy chỉnh (tùy chọn)</label>
+                        <textarea
+                            id="custom-request"
+                            value={customRequest}
+                            onChange={(e) => setCustomRequest(e.target.value)}
+                            rows={2}
+                            placeholder="Ví dụ: 'nhấn mạnh vào lợi ích cho doanh nghiệp nhỏ', 'giữ giọng văn hài hước'..."
+                            className="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-2.5 text-sm"
+                            disabled={isLoading}
+                        />
+                     </div>
+                     {style.includes('SEO') && (
+                         <div className="animate-fade-in">
+                             <label htmlFor="keywords-input" className="block text-sm font-semibold text-medium-text mb-2">Từ khóa SEO (cách nhau bằng dấu phẩy)</label>
+                             <input
+                                id="keywords-input"
+                                type="text"
+                                value={keywords}
+                                onChange={(e) => setKeywords(e.target.value)}
+                                placeholder="ví dụ: công cụ AI, viết nội dung, marketing"
+                                className="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-2.5"
+                                disabled={isLoading}
+                             />
+                         </div>
+                     )}
+                </div>
+                <button
+                    onClick={handleRewrite}
+                    disabled={isLoading || !originalText.trim()}
+                    className="w-full mt-6 bg-brand-blue hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2 disabled:bg-dark-border disabled:cursor-not-allowed"
+                >
+                    <SparklesIcon className="w-5 h-5" />
+                    {isLoading ? 'Đang xử lý...' : 'Viết Lại & Tối Ưu Hóa'}
+                </button>
+                {error && <p className="mt-3 text-xs text-center text-red-400 bg-red-900/30 p-2 rounded-md">{error}</p>}
             </div>
 
-            {/* Cột Output & Chat */}
+            {/* Output Panel */}
             <div className="bg-dark-card border border-dark-border rounded-xl p-6 flex flex-col">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-light-text">Trình Biên Tập AI</h2>
-                    {rewrittenText && !isLoading && (
-                        <div className="flex items-center gap-2">
-                             <button onClick={handleCopy} disabled={isCopied} className="flex items-center gap-2 bg-dark-border hover:bg-gray-600 text-light-text font-semibold py-2 px-4 rounded-lg transition-all text-sm disabled:opacity-70">
-                                <CopyIcon className="w-4 h-4" />
-                                <span>{isCopied ? 'Đã sao chép!' : 'Sao chép'}</span>
-                            </button>
-                            <button onClick={handleDownload} className="flex items-center gap-2 bg-dark-border hover:bg-gray-600 text-light-text font-semibold py-2 px-4 rounded-lg transition-colors text-sm">
-                                <DownloadIcon className="w-4 h-4" />
-                                <span>Tải xuống</span>
-                            </button>
+                 <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                     <h2 className="text-xl font-bold">Kết quả tối ưu</h2>
+                     <div className="flex items-center gap-2">
+                         <button
+                            onClick={handleSaveAsTxt}
+                            disabled={!rewrittenText || isLoading || isRefining}
+                            className="flex items-center gap-2 bg-dark-border hover:bg-emerald-600 text-light-text font-semibold py-2 px-3 rounded-lg transition-colors text-sm disabled:opacity-50"
+                         >
+                            <DownloadIcon className="w-4 h-4" />
+                            Lưu (.txt)
+                         </button>
+                         <button
+                            onClick={handleCopy}
+                            disabled={!rewrittenText || isLoading || isRefining}
+                            className="flex items-center gap-2 bg-dark-border hover:bg-brand-blue text-light-text font-semibold py-2 px-3 rounded-lg transition-colors text-sm disabled:opacity-50"
+                         >
+                            {isCopied ? <ClipboardCheckIcon className="w-4 h-4 text-emerald-400" /> : <CopyIcon className="w-4 h-4" />}
+                            {isCopied ? 'Đã chép!' : 'Sao chép'}
+                         </button>
+                     </div>
+                 </div>
+                 <div className="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-light-text flex-grow min-h-[300px] overflow-y-auto relative">
+                    { (isLoading || isRefining) && (
+                        <div className="absolute inset-0 bg-dark-bg/80 backdrop-blur-sm flex items-center justify-center z-10">
+                             <div className="w-8 h-8 border-4 border-dashed rounded-full animate-spin border-brand-blue"></div>
                         </div>
                     )}
-                </div>
-
-                {error && (
-                    <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg mb-4" role="alert">
-                        <p>{error}</p>
-                    </div>
-                )}
-                
-                <div className="relative flex-grow flex flex-col min-h-[300px]">
-                    <div className="absolute inset-0 bg-dark-bg border border-dark-border rounded-lg p-4 overflow-y-auto">
-                        {isLoading ? (
-                            <div className="flex flex-col items-center justify-center h-full text-medium-text">
-                                <div className="w-10 h-10 border-4 border-dashed rounded-full animate-spin border-brand-blue mb-4"></div>
-                                <p className="font-semibold">AI đang tinh chỉnh từng câu chữ...</p>
-                            </div>
-                        ) : (
-                            <pre className="text-light-text whitespace-pre-wrap font-sans text-base leading-relaxed">
-                                {rewrittenText || <span className="text-medium-text">Nội dung đã tối ưu hóa sẽ xuất hiện ở đây. Bắt đầu bằng cách tạo bản nháp hoặc ra lệnh trực tiếp trong khung chat bên dưới.</span>}
-                            </pre>
-                        )}
-                    </div>
-                    {rewrittenText && !isLoading && (
-                         <span className="absolute bottom-3 right-3 text-xs text-medium-text bg-dark-card px-2 py-1 rounded z-10">
-                            {wordCount(rewrittenText)} từ
-                        </span>
+                    {!rewrittenText && !isLoading && (
+                        <div className="flex flex-col items-center justify-center h-full text-center text-medium-text">
+                            <PencilIcon className="w-12 h-12 text-dark-border mb-4"/>
+                            <h3 className="font-semibold text-light-text">Kết quả sẽ xuất hiện ở đây</h3>
+                            <p className="text-sm">Nội dung được AI viết lại sẽ sẵn sàng để bạn sử dụng.</p>
+                        </div>
                     )}
-                </div>
-
-                 {/* Khung chat chỉnh sửa */}
-                <div className="mt-6 pt-6 border-t border-dark-border">
-                    <div className="max-h-40 overflow-y-auto mb-4 space-y-3 pr-2">
-                        {chatHistory.map((msg, index) => (
-                            <div key={index} className="flex">
-                                {msg.role === 'user' && (
-                                    <div className="ml-auto bg-brand-blue text-white rounded-lg py-2 px-4 max-w-sm animate-fade-in">
-                                        {msg.text}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                        {isChatLoading && (
-                            <div className="flex justify-start">
-                                <div className="bg-dark-border rounded-lg py-2 px-4 inline-flex items-center gap-2">
-                                    <span className="w-2 h-2 bg-medium-text rounded-full animate-pulse delay-75"></span>
-                                    <span className="w-2 h-2 bg-medium-text rounded-full animate-pulse delay-150"></span>
-                                    <span className="w-2 h-2 bg-medium-text rounded-full animate-pulse delay-300"></span>
-                                </div>
-                            </div>
-                        )}
+                    {rewrittenText && <pre className="whitespace-pre-wrap font-sans">{rewrittenText}</pre>}
+                 </div>
+                 {rewrittenText && !isLoading && (
+                    <div className="mt-4 pt-4 border-t border-dark-border animate-fade-in">
+                        <label htmlFor="refinement-prompt" className="block text-sm font-semibold text-medium-text mb-2">Phòng Tinh Chỉnh Tương Tác</label>
+                        <div className="flex items-center gap-2">
+                            <input
+                                id="refinement-prompt"
+                                type="text"
+                                value={refinementPrompt}
+                                onChange={(e) => setRefinementPrompt(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && !isRefining && handleRefine()}
+                                placeholder="Yêu cầu chỉnh sửa, ví dụ: 'làm cho đoạn 2 ngắn hơn'..."
+                                className="flex-grow bg-dark-bg border border-dark-border rounded-lg px-4 py-2 text-sm"
+                                disabled={isRefining}
+                            />
+                            <button
+                                onClick={handleRefine}
+                                disabled={isRefining || !refinementPrompt.trim()}
+                                className="bg-brand-blue hover:bg-blue-600 text-white p-2.5 rounded-lg disabled:bg-dark-border"
+                                aria-label="Gửi yêu cầu tinh chỉnh"
+                            >
+                                <SendIcon className="w-5 h-5"/>
+                            </button>
+                        </div>
                     </div>
-                    <form onSubmit={handleSendMessage} className="flex items-center gap-3">
-                        <input
-                            type="text"
-                            value={chatMessage}
-                            onChange={(e) => setChatMessage(e.target.value)}
-                            placeholder="Yêu cầu AI tạo mới hoặc chỉnh sửa..."
-                            className="flex-grow bg-dark-bg border border-dark-border rounded-lg px-4 py-2.5 text-light-text placeholder-medium-text focus:outline-none focus:ring-2 focus:ring-brand-blue transition-shadow"
-                            disabled={isChatLoading || isLoading}
-                            autoComplete="off"
-                        />
-                        <button
-                            type="submit"
-                            disabled={isChatLoading || isLoading || !chatMessage.trim()}
-                            className="bg-brand-blue hover:bg-blue-600 text-white font-bold p-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:bg-dark-border disabled:cursor-not-allowed disabled:scale-100 flex-shrink-0"
-                            aria-label="Gửi yêu cầu"
-                        >
-                            {isChatLoading ? (
-                                <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
-                            ) : (
-                                <SendIcon className="w-5 h-5" />
-                            )}
-                        </button>
-                    </form>
-                </div>
+                 )}
             </div>
         </div>
     );

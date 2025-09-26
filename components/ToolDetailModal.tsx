@@ -1,5 +1,6 @@
 import React from 'react';
-import { AITool } from '../types';
+import { AITool } from '../types.js';
+import { SparklesIcon } from './icons/Icons.js';
 
 interface ToolDetailModalProps {
   tool: AITool | null;
@@ -14,6 +15,29 @@ const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose, onAcce
     if (tool) {
       onAccessTool(tool);
     }
+  };
+
+  const renderAccessInfo = () => {
+    let accessText = "Truy cập miễn phí";
+    if (tool.accessLevel === 'creator') accessText = "Yêu cầu Gói Người Sáng Tạo";
+    if (tool.accessLevel === 'professional') accessText = "Yêu cầu Gói Chuyên Nghiệp";
+    
+    return (
+      <div className="text-center sm:text-left">
+          <div className="flex items-center justify-center sm:justify-start gap-2">
+            {tool.usageType === 'credits' && tool.creditCost && (
+              <>
+                <SparklesIcon className="w-6 h-6 text-amber-400" />
+                <span className="text-3xl font-extrabold text-light-text">{tool.creditCost} Tín dụng</span>
+              </>
+            )}
+             {tool.usageType === 'unlimited' && (
+                <span className="text-3xl font-extrabold text-emerald-400">Không giới hạn</span>
+            )}
+          </div>
+          <span className="text-sm text-medium-text">{accessText}</span>
+      </div>
+    );
   };
 
   return (
@@ -85,10 +109,7 @@ const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose, onAcce
         </div>
 
         <div className="mt-8 pt-6 border-t border-dark-border flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-center sm:text-left">
-                <span className="text-3xl font-extrabold text-light-text">{tool.price}</span>
-                <span className="text-medium-text">/tháng</span>
-            </div>
+            {renderAccessInfo()}
             <button 
                 onClick={handleAccessClick}
                 disabled={tool.status === 'coming_soon'}

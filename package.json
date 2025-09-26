@@ -1,5 +1,5 @@
 {
-  "name": "chợ-công-cụ-ai",
+  "name": "ytlab",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,9 +11,7 @@
   "dependencies": {
     "react": "^19",
     "react-dom": "^19",
-    "@google/genai": "latest",
-    "@ffmpeg/ffmpeg": "0.12.10",
-    "@ffmpeg/util": "0.12.1"
+    "@google/genai": "latest"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

@@ -1,14 +1,15 @@
 import React from 'react';
-import { GoogleIcon } from './icons/Icons';
+import { GoogleIcon } from './icons/Icons.js';
 
 interface AuthModalProps {
   mode: 'login' | 'signup';
   isOpen: boolean;
   onClose: () => void;
   onGoogleAuthClick: () => void;
+  onAuthSuccess: () => void; // Thêm prop mới
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ mode, isOpen, onClose, onGoogleAuthClick }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ mode, isOpen, onClose, onGoogleAuthClick, onAuthSuccess }) => {
   if (!isOpen) return null;
 
   const isLogin = mode === 'login';
@@ -17,8 +18,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, isOpen, onClose, onGoogleAu
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Logic xác thực sẽ được thêm vào đây
-    onClose(); // Đóng modal sau khi submit (giả lập)
+    // Logic xác thực thật sẽ ở đây
+    onAuthSuccess(); // Gọi hàm khi xác thực thành công (mô phỏng)
   };
 
   return (

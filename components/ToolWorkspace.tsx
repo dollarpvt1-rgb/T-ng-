@@ -1,19 +1,23 @@
 import React from 'react';
-import { AITool } from '../types';
-import { ArrowLeftIcon } from './icons/Icons';
-import VisionCraftUI from './tools/VisionCraftUI';
-import ScriptProUI from './tools/ScriptProUI';
-import ContentMasterUI from './tools/ContentMasterUI';
-import EchoVidUI from './tools/EchoVidUI';
+import { AITool } from '../types.js';
+import { SubscriptionPlan } from '../types.js';
+import { ArrowLeftIcon } from './icons/Icons.js';
+import VisionCraftUI from './tools/VisionCraftUI.js';
+import ScriptProUI from './tools/ScriptProUI.js';
+import ContentMasterUI from './tools/ContentMasterUI.js';
+import EchoVidUI from './tools/EchoVidUI.js';
+import TubeRankUI from './tools/TubeRankUI.js';
+import AIStudioProUI from './tools/AIStudioProUI.js';
 
 interface ToolWorkspaceProps {
   tool: AITool;
   initialData?: any;
   onGoBack: () => void;
   onNavigate: (toolId: string, data: any) => void;
+  subscriptionPlan: SubscriptionPlan; // Thêm prop gói đăng ký
 }
 
-const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ tool, initialData, onGoBack, onNavigate }) => {
+const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ tool, initialData, onGoBack, onNavigate, subscriptionPlan }) => {
   const renderToolUI = () => {
     switch (tool.id) {
       case 'visioncraft':
@@ -21,9 +25,17 @@ const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ tool, initialData, onGoBa
       case 'echovid':
         return <EchoVidUI initialData={initialData} />;
       case 'script-pro':
-        return <ScriptProUI onNavigateToVideo={onNavigate} />;
+        return <ScriptProUI 
+                  initialData={initialData} 
+                  onNavigateToVideo={onNavigate} 
+                  subscriptionPlan={subscriptionPlan} // Truyền gói xuống
+               />;
       case 'content-master':
         return <ContentMasterUI />;
+      case 'tuberank':
+        return <TubeRankUI onNavigate={onNavigate} />;
+      case 'ai-studio-pro':
+          return <AIStudioProUI onGoBack={onGoBack} />;
       default:
         return (
           <div className="text-center p-8 bg-dark-card border border-dark-border rounded-xl">

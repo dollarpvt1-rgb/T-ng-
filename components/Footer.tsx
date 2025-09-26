@@ -6,8 +6,8 @@ const Footer: React.FC = () => {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div>
-            <h3 className="text-lg font-semibold text-light-text mb-4">AI Marketplace</h3>
-            <p className="text-medium-text">Nền tảng của bạn để khám phá các công cụ AI tốt nhất.</p>
+            <h3 className="text-lg font-semibold text-light-text mb-4">YTLab</h3>
+            <p className="text-medium-text">Phòng thí nghiệm AI cho sự tăng trưởng YouTube của bạn.</p>
           </div>
           <div>
             <h4 className="font-semibold text-light-text mb-4">Công Cụ</h4>
@@ -35,7 +35,7 @@ const Footer: React.FC = () => {
           </div>
         </div>
         <div className="border-t border-dark-border pt-8 text-center text-medium-text">
-          <p>&copy; {new Date().getFullYear()} AI Marketplace. Tất cả các quyền được bảo lưu.</p>
+          <p>&copy; {new Date().getFullYear()} YTLab. Tất cả các quyền được bảo lưu.</p>
         </div>
       </div>
     </footer>

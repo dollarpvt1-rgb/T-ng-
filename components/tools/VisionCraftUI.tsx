@@ -1,199 +1,224 @@
+// Fix: Replaced placeholder content with a functional React component for image generation.
 import React, { useState } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { DownloadIcon, SettingsIcon } from '../icons/Icons';
+import { SparklesIcon, DownloadIcon, ImageIcon } from '../icons/Icons';
 
-const ASPECT_RATIOS = [
-  { value: '1:1', label: '1:1 (Vuông)' },
-  { value: '16:9', label: '16:9 (Màn ảnh rộng)' },
-  { value: '9:16', label: '9:16 (Dọc)' },
-  { value: '4:3', label: '4:3 (Phong cảnh)' },
-  { value: '3:4', label: '3:4 (Chân dung)' },
-];
-
+// Define the styles for the dropdown
 const STYLES = [
-  { value: 'photorealistic', label: 'Chân thực', prefix: 'photorealistic image, cinematic lighting, ultra-detailed,' },
-  { value: 'anime', label: 'Anime', prefix: 'anime style, vibrant colors, detailed line art, by Makoto Shinkai,' },
-  { value: 'digital-art', label: 'Nghệ thuật số', prefix: 'digital art, intricate details, vibrant, concept art,' },
-  { value: 'fantasy', label: 'Tưởng tượng', prefix: 'fantasy art, epic, detailed, matte painting, mystical,' },
-  { value: '3d', label: 'Mô hình 3D', prefix: '3D render, octane render, high detail, physically-based rendering,' },
-  { value: 'cinematic', label: 'Điện ảnh', prefix: 'cinematic film still, dramatic lighting, shallow depth of field,' },
-  { value: 'watercolor', label: 'Tranh màu nước', prefix: 'watercolor painting, soft brush strokes, blended colors,' },
-  { value: 'vintage', label: 'Ảnh Cổ điển', prefix: 'vintage photograph, grainy film, sepia tones, 1970s style,' },
-  { value: 'cyberpunk', label: 'Cyberpunk', prefix: 'cyberpunk style, neon lights, futuristic city, dystopian,' },
-  { value: 'low-poly', label: 'Low Poly', prefix: 'low poly art, isometric view, vibrant color palette,' },
-  { value: 'pixel-art', label: 'Pixel Art', prefix: 'pixel art, 16-bit, retro gaming style, detailed sprites,' },
-  { value: 'none', label: 'Không có', prefix: '' },
-];
-
-const QUALITIES = [
-  { value: 'standard', label: 'Tiêu chuẩn (1024px)', suffix: ', standard quality' },
-  { value: 'hd', label: 'HD (2048px)', suffix: ', high detail, sharp focus' },
-  { value: '4k', label: '4K', suffix: ', 4k resolution, ultra high detail, professional photography' },
+    { value: 'none', label: 'Không có (Mặc định)' },
+    { value: 'Photorealistic', label: 'Tả thực' },
+    { value: 'Cinematic', label: 'Điện ảnh' },
+    { value: 'Digital Art', label: 'Nghệ thuật số' },
+    { value: 'Anime', label: 'Hoạt hình (Anime)' },
+    { value: '3D Model', label: 'Mô hình 3D' },
+    { value: 'Pixel Art', label: 'Nghệ thuật Pixel' },
+    { value: 'Watercolor', label: 'Màu nước' },
+    { value: 'Oil Painting', label: 'Tranh sơn dầu' },
+    { value: 'Minimalist', label: 'Tối giản' },
+    { value: 'Line Art', label: 'Nghệ thuật đường nét' },
+    { value: 'Cyberpunk', label: 'Cyberpunk' },
+    { value: 'Fantasy Art', label: 'Nghệ thuật Tưởng tượng' },
+    { value: 'Architectural', label: 'Kiến trúc' },
+    { value: 'Isometric', label: 'Isometric' },
+    { value: 'Vaporwave', label: 'Vaporwave' },
+    { value: 'Steampunk', label: 'Steampunk' },
+    { value: 'Abstract', label: 'Trừu tượng' },
+    { value: 'Sticker Illustration', label: 'Minh hoạ Sticker' },
+    { value: 'Vintage Photograph', label: 'Ảnh cổ điển' },
 ];
 
 
 const VisionCraftUI: React.FC = () => {
-  const [prompt, setPrompt] = useState('');
-  const [aspectRatio, setAspectRatio] = useState('1:1');
-  const [style, setStyle] = useState('photorealistic');
-  const [quality, setQuality] = useState('hd');
+    const [prompt, setPrompt] = useState('');
+    const [style, setStyle] = useState('none'); // State for selected style
+    const [numberOfImages, setNumberOfImages] = useState(1);
+    const [aspectRatio, setAspectRatio] = useState('1:1');
+    const [generatedImages, setGeneratedImages] = useState<string[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+    const aspectRatios = ["1:1", "16:9", "9:16", "4:3", "3:4"];
 
-  const handleGenerateImage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!prompt.trim()) {
-      setError('Vui lòng nhập mô tả cho hình ảnh.');
-      return;
-    }
+    const handleGenerate = async () => {
+        if (!prompt.trim()) {
+            setError('Vui lòng nhập mô tả hình ảnh.');
+            return;
+        }
+        if (!process.env.API_KEY) {
+            setError("API Key không được cấu hình. Vui lòng thiết lập biến môi trường API_KEY.");
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        setGeneratedImages([]);
+
+        // Combine prompt with style
+        const finalPrompt = style === 'none' ? prompt : `${prompt}, in the style of ${style}`;
+
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const response = await ai.models.generateImages({
+                model: 'imagen-4.0-generate-001',
+                prompt: finalPrompt, // Use the combined prompt
+                config: {
+                    numberOfImages,
+                    aspectRatio,
+                    outputMimeType: 'image/jpeg',
+                },
+            });
+
+            const images = response.generatedImages.map(img => img.image.imageBytes);
+            setGeneratedImages(images);
+
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi không xác định.';
+            setError(`Không thể tạo hình ảnh. ${errorMessage}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
     
-    setIsLoading(true);
-    setError(null);
-    setGeneratedImage(null);
+    const downloadImage = (base64Image: string, index: number) => {
+        const link = document.createElement('a');
+        link.href = `data:image/jpeg;base64,${base64Image}`;
+        link.download = `visioncraft-${prompt.slice(0, 20).replace(/\s/g, '_')}-${index + 1}.jpeg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
-    try {
-      const stylePrefix = STYLES.find(s => s.value === style)?.prefix || '';
-      const qualitySuffix = QUALITIES.find(q => q.value === quality)?.suffix || '';
-      const fullPrompt = `${stylePrefix} ${prompt}${qualitySuffix}`;
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-full">
+            {/* Control Panel */}
+            <div className="lg:col-span-1 bg-dark-card border border-dark-border rounded-xl p-6 flex flex-col">
+                <h2 className="text-xl font-bold mb-4">Bảng Điều Khiển</h2>
+                
+                <div className="flex-grow space-y-6">
+                    <div>
+                        <label htmlFor="prompt" className="block text-sm font-semibold text-medium-text mb-2">
+                            Mô tả (Prompt)
+                        </label>
+                        <textarea
+                            id="prompt"
+                            rows={5}
+                            value={prompt}
+                            onChange={(e) => setPrompt(e.target.value)}
+                            placeholder="Ví dụ: Một chú mèo phi hành gia dễ thương, đội mũ bảo hiểm thủy tinh, ngồi trên mặt trăng, nhìn ra các vì sao, nghệ thuật kỹ thuật số"
+                            className="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-light-text placeholder-medium-text focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                            disabled={isLoading}
+                        />
+                    </div>
 
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateImages({
-        model: 'imagen-4.0-generate-001',
-        prompt: fullPrompt,
-        config: {
-          numberOfImages: 1,
-          outputMimeType: 'image/png',
-          aspectRatio: aspectRatio as "1:1" | "16:9" | "9:16" | "4:3" | "3:4",
-        },
-      });
+                    <div>
+                        <h3 className="text-sm font-semibold text-medium-text mb-2">Cài đặt</h3>
+                        <div className="space-y-4 bg-dark-bg border border-dark-border p-4 rounded-lg">
+                             <div>
+                                <label htmlFor="style-select" className="block text-xs font-medium text-light-text mb-2">Phong cách</label>
+                                <select
+                                    id="style-select"
+                                    value={style}
+                                    onChange={(e) => setStyle(e.target.value)}
+                                    disabled={isLoading}
+                                    className="w-full bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-light-text focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                                >
+                                    {STYLES.map(s => (
+                                        <option key={s.value} value={s.value}>{s.label}</option>
+                                    ))}
+                                </select>
+                             </div>
+                             <div>
+                                <label htmlFor="num-images" className="block text-xs font-medium text-light-text mb-2">Số lượng ảnh: {numberOfImages}</label>
+                                <input
+                                    id="num-images"
+                                    type="range"
+                                    min="1"
+                                    max="4"
+                                    value={numberOfImages}
+                                    onChange={(e) => setNumberOfImages(parseInt(e.target.value, 10))}
+                                    className="w-full h-2 bg-dark-border rounded-lg appearance-none cursor-pointer"
+                                    disabled={isLoading}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-light-text mb-2">Tỷ lệ khung hình</label>
+                                <div className="grid grid-cols-5 gap-2">
+                                    {aspectRatios.map(ratio => (
+                                        <button
+                                            key={ratio}
+                                            onClick={() => setAspectRatio(ratio)}
+                                            disabled={isLoading}
+                                            className={`py-2 text-xs font-semibold rounded-md transition-colors ${aspectRatio === ratio ? 'bg-brand-blue text-white' : 'bg-dark-card hover:bg-dark-border'}`}
+                                        >
+                                            {ratio}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-      if (response.generatedImages && response.generatedImages.length > 0) {
-        const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
-        const imageUrl = `data:image/png;base64,${base64ImageBytes}`;
-        setGeneratedImage(imageUrl);
-      } else {
-        throw new Error('API không trả về hình ảnh nào.');
-      }
-    } catch (err) {
-      console.error('Lỗi khi gọi Gemini API:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi không xác định. Vui lòng thử lại.';
-      setError(`Không thể tạo ảnh. ${errorMessage}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDownloadImage = () => {
-    if (!generatedImage) return;
-    const link = document.createElement('a');
-    link.href = generatedImage;
-    const filename = `${prompt.slice(0, 30).replace(/\s+/g, '_') || 'visioncraft-ai'}.png`;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+                <div className="mt-6">
+                    <button
+                        onClick={handleGenerate}
+                        disabled={isLoading || !prompt.trim()}
+                        className="w-full bg-brand-blue hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2 disabled:bg-dark-border disabled:cursor-not-allowed"
+                    >
+                        <SparklesIcon className="w-5 h-5" />
+                        {isLoading ? 'Đang tạo...' : 'Tạo Hình Ảnh'}
+                    </button>
+                    {error && <p className="mt-3 text-xs text-center text-red-400 bg-red-900/30 p-2 rounded-md">{error}</p>}
+                </div>
+            </div>
 
-  return (
-    <div className="bg-dark-card border border-dark-border rounded-xl p-6 md:p-8">
-      <form onSubmit={handleGenerateImage}>
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <input
-            type="text"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Ví dụ: Một chú mèo phi hành gia đang cưỡi ván trượt trên sao Hỏa..."
-            className="flex-grow bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-light-text placeholder-medium-text focus:outline-none focus:ring-2 focus:ring-brand-blue transition-shadow"
-            disabled={isLoading}
-          />
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="bg-brand-purple hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg transition-all duration-300 transform hover:scale-105 disabled:bg-dark-border disabled:cursor-not-allowed disabled:scale-100 flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Đang xử lý...
-              </>
-            ) : (
-              'Tạo Ảnh'
-            )}
-          </button>
+            {/* Results Panel */}
+            <div className="lg:col-span-2 bg-dark-card border border-dark-border rounded-xl p-6 flex flex-col items-center justify-center min-h-[500px] lg:min-h-0">
+                {isLoading && (
+                    <div className="text-center text-medium-text">
+                        <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-brand-blue mb-4"></div>
+                        <p className="font-semibold text-light-text">AI đang vẽ nên kiệt tác của bạn...</p>
+                        <p className="text-sm">Quá trình này có thể mất một chút thời gian.</p>
+                    </div>
+                )}
+
+                {!isLoading && generatedImages.length === 0 && (
+                     <div className="text-center text-medium-text">
+                        <ImageIcon className="w-16 h-16 mx-auto mb-4 text-dark-border" />
+                        <h3 className="text-lg font-bold text-light-text">Không Gian Sáng Tạo Của Bạn</h3>
+                        <p className="max-w-sm">Hình ảnh được tạo ra sẽ xuất hiện ở đây. Hãy bắt đầu bằng cách nhập mô tả và nhấn nút "Tạo Hình Ảnh".</p>
+                    </div>
+                )}
+                
+                {!isLoading && generatedImages.length > 0 && (
+                    <div className={`w-full h-full grid gap-4 ${
+                        numberOfImages === 1 ? 'grid-cols-1' :
+                        numberOfImages === 2 ? 'grid-cols-1 md:grid-cols-2' :
+                        numberOfImages === 3 ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-2'
+                    }`}>
+                        {generatedImages.map((img, index) => (
+                             <div key={index} className="relative group rounded-lg overflow-hidden border border-dark-border">
+                                <img
+                                    src={`data:image/jpeg;base64,${img}`}
+                                    alt={`Generated image ${index + 1} for prompt: ${prompt}`}
+                                    className="w-full h-full object-contain"
+                                />
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <button
+                                        onClick={() => downloadImage(img, index)}
+                                        className="flex items-center gap-2 bg-light-text text-dark-bg font-bold py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+                                    >
+                                        <DownloadIcon className="w-5 h-5" />
+                                        Tải xuống
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
-
-        <div className="border-t border-dark-border pt-4 mb-6">
-          <div className="flex items-center gap-2 text-medium-text mb-4">
-              <SettingsIcon className="w-5 h-5" />
-              <h3 className="font-semibold text-light-text">Cài đặt nâng cao</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label htmlFor="aspectRatio" className="block text-sm font-medium text-medium-text mb-2">Tỷ lệ khung hình</label>
-              <select id="aspectRatio" value={aspectRatio} onChange={e => setAspectRatio(e.target.value)} disabled={isLoading} className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-light-text focus:outline-none focus:ring-2 focus:ring-brand-blue">
-                {ASPECT_RATIOS.map(ar => <option key={ar.value} value={ar.value}>{ar.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="style" className="block text-sm font-medium text-medium-text mb-2">Phong cách</label>
-              <select id="style" value={style} onChange={e => setStyle(e.target.value)} disabled={isLoading} className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-light-text focus:outline-none focus:ring-2 focus:ring-brand-blue">
-                {STYLES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="quality" className="block text-sm font-medium text-medium-text mb-2">Chất lượng</label>
-              <select id="quality" value={quality} onChange={e => setQuality(e.target.value)} disabled={isLoading} className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-light-text focus:outline-none focus:ring-2 focus:ring-brand-blue">
-                {QUALITIES.map(q => <option key={q.value} value={q.value}>{q.label}</option>)}
-              </select>
-            </div>
-          </div>
-        </div>
-      </form>
-
-      {error && (
-        <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg mb-6" role="alert">
-          <p>{error}</p>
-        </div>
-      )}
-
-      <div className="flex justify-center">
-        <div className="w-full max-w-2xl aspect-square bg-dark-bg rounded-lg flex items-center justify-center border-2 border-dashed border-dark-border overflow-hidden relative group">
-          {isLoading && (
-            <div className="text-center text-medium-text">
-               <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-brand-blue mx-auto mb-4"></div>
-              <p className="font-semibold">AI đang vẽ tác phẩm của bạn...</p>
-              <p className="text-sm">Quá trình này có thể mất một vài phút.</p>
-            </div>
-          )}
-          {!isLoading && generatedImage && (
-            <>
-              <img src={generatedImage} alt="Hình ảnh do AI tạo ra" className="w-full h-full object-contain" />
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={handleDownloadImage}
-                    className="flex items-center gap-2 bg-light-text text-dark-bg font-bold py-2 px-6 rounded-lg transition-transform hover:scale-105"
-                  >
-                    <DownloadIcon className="w-5 h-5"/>
-                    Tải Về
-                  </button>
-              </div>
-            </>
-          )}
-          {!isLoading && !generatedImage && (
-            <div className="text-center text-medium-text p-4">
-              <p className="text-lg font-semibold">Kết quả của bạn sẽ xuất hiện ở đây</p>
-              <p>Hãy mô tả ý tưởng của bạn và để AI biến nó thành hiện thực!</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default VisionCraftUI;

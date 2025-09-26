@@ -1,5 +1,5 @@
 import React from 'react';
-import { GoogleIcon } from './icons/Icons';
+import { GoogleIcon } from './icons/Icons.js';
 
 interface HeroProps {
   onSignupClick: () => void;
@@ -25,10 +25,10 @@ const Hero: React.FC<HeroProps> = ({ onSignupClick, onGoogleSignupClick }) => {
       ></div>
       <div className="relative z-10">
         <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-light-text to-medium-text">
-          Sàn Giao Dịch Tối Ưu Cho Công Cụ AI
+          Nền Tảng AI Tối Ưu Cho Nhà Sáng Tạo YouTube
         </h1>
         <p className="text-lg md:text-xl text-medium-text max-w-3xl mx-auto mb-8">
-          Khai phá tiềm năng của bạn với AI tiên tiến. Tìm kiếm, so sánh và đăng ký các công cụ tốt nhất cho mọi nhiệm vụ, tất cả ở một nơi.
+          Từ nghiên cứu từ khóa, viết kịch bản đến tối ưu hóa SEO, YTLab cung cấp mọi công cụ bạn cần để biến ý tưởng thành video triệu view.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
